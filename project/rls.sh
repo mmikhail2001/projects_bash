@@ -1,35 +1,25 @@
 #!/bin/bash
 
-# TODO:
-# определить поля в бд
-# выбрать лучший метод принадлежности сектору
-# helthcheck
-# шифрование
-# предупреждение о подмене
-# рлс (просчитывает, идут ли до PRO)
-# скрипт запуска всех инстансов (чтение координат из файла)
-# Makefule для запуска, для очистки
-
-# + скрипт для ЗРДН, ПРО 
-
-# ./pro.sh 1200000 3800 3825 1
-
-#  rm -rf /tmp/GenTargets/*
-# ./create_db.sh
-
-# детектирование обращения к необъявленным переменным
 set -u
 
 if [ $# -ne 5 ]; then
-    echo "usage: $0 <type_system: PRO | ZRDN> <number> <radius> <x> <y>"
+    echo "usage: $0 <type_system: RLS> <number> <radius> <x> <y>"
     exit 1
 fi
+
+
+# нужно передать координаты и радиус ПРО, чтобы РЛС сообщала о том, что БР движется на ПРО
+# не стреляет, почти вся функциональность уходит
+# 0 стадия только обнаружили
+# 1 стадия - уже хранятся первые координаты
+# 2 стадия - уже хранятся вторые первые координаты, понят тип, произведен рассчет, лог
+# те, кто на 2 стадии, больше не рассматриваем (уже сообщили кому надо)
 
 CLOCK=1
 COUNT_TARGETS=30
 
 TYPE_SYSTEM=$1
-PRO_NUM=$2
+SYSTEM_NUM=$2
 RADIUS=$3
 PRO_X=$4
 PRO_Y=$5
@@ -46,13 +36,13 @@ elif [ "$TYPE_SYSTEM" == "ZRDN" ]; then
     COUNT_SHOOTS=10
 fi
 
-FILE_STAGE1="./temp/pro${PRO_NUM}_state1.log"
-FILE_STAGE2="./temp/pro${PRO_NUM}_state2.log"
-FILE_STAGE3="./temp/pro${PRO_NUM}_state3.log"
+FILE_STAGE1="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state1.log"
+FILE_STAGE2="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state2.log"
+FILE_STAGE3="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state3.log"
 # временный файл, в котором сохраняются цели, в которые стрельнули, и ждем результата на след. такте
 # остальные цели, т.е. те, в которые стрельнули и которые заново не сгенерировались, считаются уничтоженными (в файл не попадают)
-FILE_STAGE3_TEMP="./temp/pro${PRO_NUM}_state3_temp.log"
-FILE_LOG="./temp/pro${PRO_NUM}.log"
+FILE_STAGE3_TEMP="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state3_temp.log"
+FILE_LOG="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}.log"
 DIR_TARGETS="/tmp/GenTargets/Targets"
 DIR_DESTROY="/tmp/GenTargets/Destroy"
 
@@ -72,7 +62,7 @@ function send_to_command_post {
     local timestamp=$(date +"%Y.%m.%d %H.%M.%S")
 
     # -N чтобы при закрытии клиента сервер не закрывал сокет
-    echo "$timestamp,PRO$PRO_NUM,$message,$target_type,$target_id,$target_x,$target_y" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
+    echo "$timestamp,${TYPE_SYSTEM}$SYSTEM_NUM,$message,$target_type,$target_id,$target_x,$target_y" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
 }
 
 function calculate_distance {
