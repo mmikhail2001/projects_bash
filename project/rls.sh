@@ -9,7 +9,7 @@ fi
 
 CLOCK_LOOP=0.8
 CLOCK_MOVE_TARGETS=1
-COUNT_TARGETS=45
+COUNT_TARGETS=60
 
 TYPE_SYSTEM="RLS"
 SYSTEM_NUM=$1
@@ -36,6 +36,9 @@ DIR_TARGETS="/tmp/GenTargets/Targets"
 COMMAND_POST_HOST="0.0.0.0"
 COMMAND_POST_PORT="8080"
 
+password="sdfr374yry3c4hkcn34ycm3u4cynfecy"
+salt="mysalt"
+
 function send_to_command_post {
     local message="$1"
     local target_id="$2"
@@ -43,11 +46,18 @@ function send_to_command_post {
     local target_x="$4"
     local target_y="$5"
     local timestamp=$(date +"%Y.%m.%d %H.%M.%S")
+    local message="$timestamp,${TYPE_SYSTEM}$SYSTEM_NUM,$message,$target_type,$target_id,$target_x,$target_y"
+
+    # -w 0 - кодирование в одну строку
+    encrypted=$(echo "$message" | openssl enc -aes-256-cbc -e -k $password -pbkdf2 | base64 -w 0)
+    hash=$(echo -n "$message$salt" | sha256sum | cut -d ' ' -f 1)
+    encoded="$encrypted.$hash"
 
     # -N чтобы при закрытии клиента сервер не закрывал сокет
-    echo "$timestamp,${TYPE_SYSTEM}$SYSTEM_NUM,$message,$target_type,$target_id,$target_x,$target_y" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
+    echo "$encoded" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
 }
 
+# определение, находится ли цель в секторе действия РЛС
 is_in_coverage_sector() {
     local x=$1
     local y=$2
@@ -87,7 +97,6 @@ function determine_target_type {
     elif [ "$isPL" -eq 1 ]; then
         echo $PL
     else
-        echo "speed[$speed]: Unknown" >> test.test.log
         echo "Unknown"
     fi
 }
@@ -100,6 +109,7 @@ function calculate_distance {
     echo "sqrt((${x1}-${x2})^2 + (${y1}-${y2})^2)" | bc -l
 }
 
+# определение, летит ли цель по направлению к зоне действия ПРО 
 function is_intersected_PRO_zone() {
     local x1=$1
     local y1=$2
@@ -132,9 +142,14 @@ function is_intersected_PRO_zone() {
 
 function get_stage() {
     local target_id=$1
+    local x=$2
+    local y=$3
     if grep -q "$target_id" "$FILE_STAGE2"; then
         echo 2
     elif grep -q "$target_id" "$FILE_STAGE1"; then
+        if grep -q "$target_id,$x,$y" "$FILE_STAGE1"; then
+            echo "Erorr: double read"    
+        fi
         echo 1
     else
         echo 0
@@ -153,7 +168,7 @@ while true; do
 
         if [ "$(is_in_coverage_sector $target_x $target_y)" -eq 1 ]; then
             # switch case по присутствию цели на определенной стадии
-            case $(get_stage "$target_id") in
+            case $(get_stage "$target_id" "$target_x" "$target_y") in
                 1)
                     # сохранены изначальные координаты, нужно извлечь вторые координаты, найти скорость, выстрелить, если нужно
                     previous_coordinates=$(grep "$target_id" "$FILE_STAGE1" | cut -d',' -f2-)
@@ -161,7 +176,6 @@ while true; do
                     previous_y=$(echo $previous_coordinates | cut -d',' -f2)
                     distance_between_clocks=$(calculate_distance $previous_x $previous_y $target_x $target_y)
                     speed=$(echo "$distance_between_clocks / $CLOCK_MOVE_TARGETS" | bc -l)
-                    echo "target_id[$target_id]: ($previous_x, $previous_y) -> ($target_x, $target_y)" >> test.test.log
                     current_target_type=$(determine_target_type $speed)
                     # сообщать об обнаружении всех целей или только тех, которые входят в зону ответственности системы ?
                     send_to_command_post "target detected" "$target_id" "$current_target_type" "$target_x" "$target_y"

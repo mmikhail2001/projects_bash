@@ -11,7 +11,6 @@ PRO1_PARAMS=PRO 1 1200 3800 3825
 ZRDN1_PARAMS=ZRDN 1 650 4975 3775
 ZRDN2_PARAMS=ZRDN 2 400 4375 3725
 ZRDN3_PARAMS=ZRDN 3 550 2925 4575
-# RLS1_PARAMS PRO_RADIUS 7000 (1200) 
 RLS1_PARAMS=1 3000 9000 5500 90 120 1200 3800 3825
 RLS2_PARAMS=2 4000 3000 4000 45 90 1200 3800 3825
 RLS3_PARAMS=3 7000 3262 3375 225 200 1200 3800 3825
@@ -35,10 +34,10 @@ run: clear
 	
 	sleep 1
 	
-	# ./$(PRO_ZRDN_FILE) $(PRO1_PARAMS) > temp/$(PRO_ZRDN_FILE).pro1.log 2>&1 &
-	# ./$(PRO_ZRDN_FILE) $(ZRDN1_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn1.log 2>&1 &
-	# ./$(PRO_ZRDN_FILE) $(ZRDN2_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn2.log 2>&1 &
-	# ./$(PRO_ZRDN_FILE) $(ZRDN3_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn3.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(PRO1_PARAMS) > temp/$(PRO_ZRDN_FILE).pro1.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(ZRDN1_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn1.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(ZRDN2_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn2.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(ZRDN3_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn3.log 2>&1 &
 	
 	./$(RLS_FILE) $(RLS1_PARAMS) > temp/$(RLS_FILE).rls1.log 2>&1 &
 	./$(RLS_FILE) $(RLS2_PARAMS) > temp/$(RLS_FILE).rls2.log 2>&1 &
@@ -46,10 +45,10 @@ run: clear
 
 	
 stop:
-	# $(call stop_process,$(PRO_ZRDN_FILE) $(PRO1_PARAMS))
-	# $(call stop_process,$(PRO_ZRDN_FILE) $(ZRDN1_PARAMS))
-	# $(call stop_process,$(PRO_ZRDN_FILE) $(ZRDN2_PARAMS))
-	# $(call stop_process,$(PRO_ZRDN_FILE) $(ZRDN3_PARAMS))
+	$(call stop_process,$(PRO_ZRDN_FILE) $(PRO1_PARAMS))
+	$(call stop_process,$(PRO_ZRDN_FILE) $(ZRDN1_PARAMS))
+	$(call stop_process,$(PRO_ZRDN_FILE) $(ZRDN2_PARAMS))
+	$(call stop_process,$(PRO_ZRDN_FILE) $(ZRDN3_PARAMS))
 	$(call stop_process,$(RLS_FILE) $(RLS1_PARAMS))
 	$(call stop_process,$(RLS_FILE) $(RLS2_PARAMS))
 	$(call stop_process,$(RLS_FILE) $(RLS3_PARAMS))

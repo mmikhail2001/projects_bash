@@ -1,0 +1,5 @@
+sort: cannot read: ./temp/ZRDN3_state3.log: No such file or directory
+grep: ./temp/ZRDN3_state2.log: No such file or directory
+grep: ./temp/ZRDN3_state1.log: No such file or directory
+grep: ./temp/ZRDN3_state2.log: No such file or directory
+grep: ./temp/ZRDN3_state2.log: No such file or directory

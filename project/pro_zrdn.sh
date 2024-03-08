@@ -2,22 +2,11 @@
 
 # TODO:
 # определить поля в бд
-# выбрать лучший метод принадлежности сектору
 # helthcheck
-# шифрование
 # предупреждение о подмене
-# рлс (просчитывает, идут ли до PRO)
-# скрипт запуска всех инстансов (чтение координат из файла)
-# Makefule для запуска, для очистки
-
-# + скрипт для ЗРДН, ПРО 
-
-
-
-# ./pro.sh 1200000 3800 3825 1
-
-#  rm -rf /tmp/GenTargets/*
-# ./create_db.sh
+# пароль, соль через env
+# файл с общими функциями (импорт)
+# лог для дебага - отдельный файл
 
 # детектирование обращения к необъявленным переменным
 set -u
@@ -27,8 +16,9 @@ if [ $# -ne 5 ]; then
     exit 1
 fi
 
-CLOCK=1
-COUNT_TARGETS=20
+CLOCK_LOOP=0.8
+CLOCK_MOVE_TARGETS=1
+COUNT_TARGETS=60
 
 TYPE_SYSTEM=$1
 SYSTEM_NUM=$2
@@ -65,6 +55,9 @@ DIR_DESTROY="/tmp/GenTargets/Destroy"
 COMMAND_POST_HOST="0.0.0.0"
 COMMAND_POST_PORT="8080"
 
+password="sdfr374yry3c4hkcn34ycm3u4cynfecy"
+salt="mysalt"
+
 function send_to_command_post {
     local message="$1"
     local target_id="$2"
@@ -72,9 +65,14 @@ function send_to_command_post {
     local target_x="$4"
     local target_y="$5"
     local timestamp=$(date +"%Y.%m.%d %H.%M.%S")
+    local message="$timestamp,${TYPE_SYSTEM}$SYSTEM_NUM,$message,$target_type,$target_id,$target_x,$target_y"
 
+    encrypted=$(echo "$message" | openssl enc -aes-256-cbc -e -k $password -pbkdf2 | base64 -w 0)
+    
+    hash=$(echo -n "$message$salt" | sha256sum | cut -d ' ' -f 1)
+    encoded="$encrypted.$hash"
     # -N чтобы при закрытии клиента сервер не закрывал сокет
-    echo "$timestamp,${TYPE_SYSTEM}$SYSTEM_NUM,$message,$target_type,$target_id,$target_x,$target_y" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
+    echo "$encoded" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
 }
 
 function calculate_distance {
@@ -105,11 +103,16 @@ function determine_target_type {
 
 function get_stage() {
     target_id="$1"
+    x="$2"
+    y="$3"
     if grep -q "$target_id" "$FILE_STAGE3"; then
         echo 3
     elif grep -q "$target_id" "$FILE_STAGE2"; then
         echo 2
     elif grep -q "$target_id" "$FILE_STAGE1"; then
+        if grep -q "$target_id,$x,$y" "$FILE_STAGE1"; then
+            echo "Erorr: double read"    
+        fi
         echo 1
     else
         echo 0
@@ -159,7 +162,8 @@ function handle_shot() {
 
 NUM_ITER=0
 while true; do
-    TARGET_FILES=$(ls -t $DIR_TARGETS | head -n $COUNT_TARGETS)
+    # читаем, начиная со старых записей
+    TARGET_FILES=$(ls -t $DIR_TARGETS | head -n $COUNT_TARGETS | tac)
     ((NUM_ITER = NUM_ITER + 1))
     for target_file in $TARGET_FILES; do
         target_id=${target_file:12:6}
@@ -171,7 +175,7 @@ while true; do
         # если цель находится в радиусе действия системы
         if (( $(echo "$distance_to_target <= $RADIUS" | bc -l) == 1 )); then
             # switch case по присутствию цели на определенной стадии
-            case $(get_stage "$target_id") in
+            case $(get_stage "$target_id" "$target_x" "$target_y") in
                 3)
                     # изменение номера итерации, т.к. предыдущий выстрел был промахом и в цель нужно выстрелить заново
                     sed -i "/^$target_id,/s/,[^,]*$/,$NUM_ITER/" "$FILE_STAGE3"
@@ -184,7 +188,7 @@ while true; do
                     previous_x=$(echo $previous_coordinates | cut -d',' -f1)
                     previous_y=$(echo $previous_coordinates | cut -d',' -f2)
                     distance_between_clocks=$(calculate_distance $previous_x $previous_y $target_x $target_y)
-                    speed=$(echo "$distance_between_clocks / $CLOCK" | bc -l)
+                    speed=$(echo "$distance_between_clocks / $CLOCK_MOVE_TARGETS" | bc -l)
                     current_target_type=$(determine_target_type $speed)
                     # сообщать об обнаружении всех целей или только тех, которые входят в зону ответственности системы ?
                     send_to_command_post "target detected" "$target_id" "$current_target_type" "$target_x" "$target_y"
@@ -203,5 +207,5 @@ while true; do
     # удаление уничтоженных целей, т.е. тех целей, выстрел по которым был совершен в пред. такте 
     # и которые не сгенерировались в текущем такте
     remove_killed_targets "$NUM_ITER" 
-    sleep $CLOCK
+    sleep $CLOCK_LOOP
 done
