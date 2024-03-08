@@ -12,6 +12,8 @@
 
 # + скрипт для ЗРДН, ПРО 
 
+
+
 # ./pro.sh 1200000 3800 3825 1
 
 #  rm -rf /tmp/GenTargets/*
@@ -26,13 +28,14 @@ if [ $# -ne 5 ]; then
 fi
 
 CLOCK=1
-COUNT_TARGETS=30
+COUNT_TARGETS=20
 
 TYPE_SYSTEM=$1
 SYSTEM_NUM=$2
-RADIUS=$3
-PRO_X=$4
-PRO_Y=$5
+# перевод в метры
+RADIUS=$(( $3 * 1000 ))
+X=$(( $4 * 1000 ))
+Y=$(( $5 * 1000 ))
 
 BM=1
 PL=2
@@ -52,7 +55,6 @@ FILE_STAGE3="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state3.log"
 # временный файл, в котором сохраняются цели, в которые стрельнули, и ждем результата на след. такте
 # остальные цели, т.е. те, в которые стрельнули и которые заново не сгенерировались, считаются уничтоженными (в файл не попадают)
 FILE_STAGE3_TEMP="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state3_temp.log"
-FILE_LOG="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}.log"
 DIR_TARGETS="/tmp/GenTargets/Targets"
 DIR_DESTROY="/tmp/GenTargets/Destroy"
 
@@ -88,7 +90,7 @@ function determine_target_type {
     
     isBM=$(echo "$speed >= 8000 && $speed <= 10000" | bc)
     isCM=$(echo "$speed >= 250 && $speed <= 1000" | bc)
-    isPL=$(echo "$speed >= 50 && $speed <= 250" | bc)
+    isPL=$(echo "$speed >= 50 && $speed <= 249" | bc)
     
     if [ "$isBM" -eq 1 ]; then
         echo $BM
@@ -165,7 +167,7 @@ while true; do
         target_x=$(echo $target_coordinates | cut -d',' -f1 | tr -d 'X')
         target_y=$(echo $target_coordinates | cut -d',' -f2 | tr -d 'Y')
 
-        distance_to_target=$(calculate_distance $PRO_X $PRO_Y $target_x $target_y)
+        distance_to_target=$(calculate_distance $X $Y $target_x $target_y)
         # если цель находится в радиусе действия системы
         if (( $(echo "$distance_to_target <= $RADIUS" | bc -l) == 1 )); then
             # switch case по присутствию цели на определенной стадии

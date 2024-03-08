@@ -2,53 +2,36 @@
 
 set -u
 
-if [ $# -ne 5 ]; then
-    echo "usage: $0 <type_system: RLS> <number> <radius> <x> <y>"
+if [ $# -ne 9 ]; then
+    echo "usage RLS: $0 <number> <radius> <x> <y> <direction_angle> <viewing_angle> <pro_radius> <X> <Y>"
     exit 1
 fi
 
+CLOCK_LOOP=0.8
+CLOCK_MOVE_TARGETS=1
+COUNT_TARGETS=45
 
-# нужно передать координаты и радиус ПРО, чтобы РЛС сообщала о том, что БР движется на ПРО
-# не стреляет, почти вся функциональность уходит
-# 0 стадия только обнаружили
-# 1 стадия - уже хранятся первые координаты
-# 2 стадия - уже хранятся вторые первые координаты, понят тип, произведен рассчет, лог
-# те, кто на 2 стадии, больше не рассматриваем (уже сообщили кому надо)
-
-CLOCK=1
-COUNT_TARGETS=30
-
-TYPE_SYSTEM=$1
-SYSTEM_NUM=$2
-RADIUS=$3
-PRO_X=$4
-PRO_Y=$5
+TYPE_SYSTEM="RLS"
+SYSTEM_NUM=$1
+# перевод в метры
+RADIUS=$(( $2 * 1000 ))
+X=$(( $3 * 1000 ))
+Y=$(( $4 * 1000 ))
+DIRECTION_ANGLE=$5
+VIEWING_ANGLE=$6
+PRO_RADIUS=$(( $7 * 1000 ))
+PRO_X=$(( $8 * 1000 ))
+PRO_Y=$(( $9 * 1000 ))
 
 BM=1
 PL=2
 CM=3
 
-if [ "$TYPE_SYSTEM" == "PRO" ]; then
-    TARGET=$BM
-    COUNT_SHOOTS=20
-elif [ "$TYPE_SYSTEM" == "ZRDN" ]; then
-    TARGET="$PL,$CM"
-    COUNT_SHOOTS=10
-fi
+TARGET=$BM
 
 FILE_STAGE1="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state1.log"
 FILE_STAGE2="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state2.log"
-FILE_STAGE3="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state3.log"
-# временный файл, в котором сохраняются цели, в которые стрельнули, и ждем результата на след. такте
-# остальные цели, т.е. те, в которые стрельнули и которые заново не сгенерировались, считаются уничтоженными (в файл не попадают)
-FILE_STAGE3_TEMP="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state3_temp.log"
-FILE_LOG="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}.log"
 DIR_TARGETS="/tmp/GenTargets/Targets"
-DIR_DESTROY="/tmp/GenTargets/Destroy"
-
-# стадия 1 - цели, которые были обнаружены и координаты которых уже были записаны
-# стадия 2 - цели, которые были обнаружены повторно, по которым посчитана скорость и выявлен тип (ББ БР, Кр. ракеты, Самолеты)
-# стадия 3 - цели, за которые несет ответственность данная система (для ПРО это ББ БР)  
 
 COMMAND_POST_HOST="0.0.0.0"
 COMMAND_POST_PORT="8080"
@@ -65,20 +48,37 @@ function send_to_command_post {
     echo "$timestamp,${TYPE_SYSTEM}$SYSTEM_NUM,$message,$target_type,$target_id,$target_x,$target_y" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
 }
 
-function calculate_distance {
-    local x1=$1
-    local y1=$2
-    local x2=$3
-    local y2=$4
-    echo "sqrt((${x1}-${x2})^2 + (${y1}-${y2})^2)" | bc -l
+is_in_coverage_sector() {
+    local x=$1
+    local y=$2
+    
+    dx=$(echo "$x - $X" | bc)
+    dy=$(echo "$y - $Y" | bc)
+    distance=$(echo "sqrt($dx^2 + $dy^2)" | bc)
+    # a = arctangent 
+    # тангенс угла - результат в радианах
+    angle_rad=$(echo "a($dy / $dx)" | bc -l)
+    # перевод радиан в градусы
+    angle_degree=$(echo "$angle_rad * (180 / 4 * a(1))" | bc -l)
+    angle=$(echo "($angle_degree + 360) % 360" | bc)
+
+    half_sector=$(echo "$VIEWING_ANGLE / 2" | bc)
+    lower_bound=$(echo "($DIRECTION_ANGLE - $half_sector + 360) % 360" | bc)
+    upper_bound=$(echo "($DIRECTION_ANGLE + $half_sector) % 360" | bc)
+
+    if (( $(echo "$distance <= $RADIUS && $lower_bound <= $angle && $angle <= $upper_bound" | bc -l) )); then
+        echo 1
+    else
+        echo 0
+    fi
 }
 
 function determine_target_type {
     local speed=$1
-    
     isBM=$(echo "$speed >= 8000 && $speed <= 10000" | bc)
     isCM=$(echo "$speed >= 250 && $speed <= 1000" | bc)
-    isPL=$(echo "$speed >= 50 && $speed <= 250" | bc)
+    isPL=$(echo "$speed >= 50 && $speed <= 249" | bc)
+    
     
     if [ "$isBM" -eq 1 ]; then
         echo $BM
@@ -87,15 +87,52 @@ function determine_target_type {
     elif [ "$isPL" -eq 1 ]; then
         echo $PL
     else
+        echo "speed[$speed]: Unknown" >> test.test.log
         echo "Unknown"
     fi
 }
 
+function calculate_distance {
+    local x1=$1
+    local y1=$2
+    local x2=$3
+    local y2=$4
+    echo "sqrt((${x1}-${x2})^2 + (${y1}-${y2})^2)" | bc -l
+}
+
+function is_intersected_PRO_zone() {
+    local x1=$1
+    local y1=$2
+    local x2=$3
+    local y2=$4
+    local center_x=$PRO_X
+    local center_y=$PRO_Y
+    local radius=$PRO_RADIUS
+
+    # Прямая движения цели: y = kx + b; найдем k, b
+    local k=$(bc -l <<< "scale=10; ($y2 - $y1) / ($x2 - $x1)")
+    local b=$(bc -l <<< "scale=10; $y1 - $k * $x1")
+
+    # (x3, y3) - координаты точки пересечения прямой движения цели (заданной по 2 точкам) и прямой, 
+    # перпендикулярной к данной и проходящей через центр окружности.
+    local x3=$(bc -l <<< "scale=10; -($b - ($center_x / $k) - $center_y) / ($k + 1 / $k)")
+    local y3=$(bc -l <<< "scale=10; $k * $x3 + $b")
+
+    # расстояние от точки пересечения (x3, y3) до центра окружности (center_x, center_y)
+    local distance=$(bc -l <<< "scale=10; sqrt(($x3 - $center_x)^2 + ($y3 - $center_y)^2)")
+
+    echo "distance[$distance], radius[$radius]" >> test.test.log
+
+    if (( $(bc <<< "$distance <= $radius") )); then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
 function get_stage() {
-    target_id="$1"
-    if grep -q "$target_id" "$FILE_STAGE3"; then
-        echo 3
-    elif grep -q "$target_id" "$FILE_STAGE2"; then
+    local target_id=$1
+    if grep -q "$target_id" "$FILE_STAGE2"; then
         echo 2
     elif grep -q "$target_id" "$FILE_STAGE1"; then
         echo 1
@@ -104,50 +141,9 @@ function get_stage() {
     fi
 }
 
-# для целей с номером итерации ITER_TO_SAVE будет известен результат только на след такте
-# цели, для которых итерации выстрела меньше ITER_TO_SAVE, считаются уничтоженными
-function remove_killed_targets() {
-    ITER_TO_SAVE=$1
-    touch $FILE_STAGE3_TEMP
-    while IFS= read -r line; do
-        local target_id=$(echo "$line" | cut -d',' -f1)
-        local target_type=$(echo "$line" | cut -d',' -f2)
-        local iter=$(echo "$line" | cut -d',' -f3)
-        if [ "$iter" == "$ITER_TO_SAVE" ]; then
-            echo "$line" >> "$FILE_STAGE3_TEMP"
-        else
-            send_to_command_post "target destroyed" "$target_id" "$target_type" "" ""
-        fi
-    # реверсивная сортировка по 3-ему полю (поля разделены через ',')
-    done < <(sort "$FILE_STAGE3" -r -t ',' -nk3)
-    # удаление уничтоженных целей
-    cp "$FILE_STAGE3_TEMP" "$FILE_STAGE3" 2>/dev/null
-    rm "$FILE_STAGE3_TEMP" 2>/dev/null
-}
-
-function handle_shot() {
-    local target_id="$1"
-    local target_type="$2"
-    local target_x="$3"
-    local target_y="$4"
-    local stage="$5"
-
-    if [ $COUNT_SHOOTS -gt 0 ]; then
-        ((COUNT_SHOOTS--))
-        echo "$target_id" > "$DIR_DESTROY/$target_id"
-        if [ "$stage" == "3" ]; then
-            # на стадии 3 цели, в которые уже хотя бы раз стреляли
-            send_to_command_post "missed target" "$target_id" "$target_type" "$target_x" "$target_y"
-        fi
-        send_to_command_post "shot at target" "$target_id" "$target_type" "$target_x" "$target_y"
-    else 
-        send_to_command_post "shot is not possible on target" "$target_id" "$target_type" "$target_x" "$target_y"
-    fi
-}
-
 NUM_ITER=0
 while true; do
-    TARGET_FILES=$(ls -t $DIR_TARGETS | head -n $COUNT_TARGETS)
+    TARGET_FILES=$(ls -t $DIR_TARGETS | head -n $COUNT_TARGETS | tac)
     ((NUM_ITER = NUM_ITER + 1))
     for target_file in $TARGET_FILES; do
         target_id=${target_file:12:6}
@@ -155,31 +151,25 @@ while true; do
         target_x=$(echo $target_coordinates | cut -d',' -f1 | tr -d 'X')
         target_y=$(echo $target_coordinates | cut -d',' -f2 | tr -d 'Y')
 
-        distance_to_target=$(calculate_distance $PRO_X $PRO_Y $target_x $target_y)
-        # если цель находится в радиусе действия системы
-        if (( $(echo "$distance_to_target <= $RADIUS" | bc -l) == 1 )); then
+        if [ "$(is_in_coverage_sector $target_x $target_y)" -eq 1 ]; then
             # switch case по присутствию цели на определенной стадии
             case $(get_stage "$target_id") in
-                3)
-                    # изменение номера итерации, т.к. предыдущий выстрел был промахом и в цель нужно выстрелить заново
-                    sed -i "/^$target_id,/s/,[^,]*$/,$NUM_ITER/" "$FILE_STAGE3"
-                    current_target_type=$(grep "$target_id" "$FILE_STAGE3" | cut -d',' -f2)
-                    handle_shot "$target_id" "$current_target_type" "$target_x" "$target_y" "3"
-                    ;;
                 1)
                     # сохранены изначальные координаты, нужно извлечь вторые координаты, найти скорость, выстрелить, если нужно
                     previous_coordinates=$(grep "$target_id" "$FILE_STAGE1" | cut -d',' -f2-)
                     previous_x=$(echo $previous_coordinates | cut -d',' -f1)
                     previous_y=$(echo $previous_coordinates | cut -d',' -f2)
                     distance_between_clocks=$(calculate_distance $previous_x $previous_y $target_x $target_y)
-                    speed=$(echo "$distance_between_clocks / $CLOCK" | bc -l)
+                    speed=$(echo "$distance_between_clocks / $CLOCK_MOVE_TARGETS" | bc -l)
+                    echo "target_id[$target_id]: ($previous_x, $previous_y) -> ($target_x, $target_y)" >> test.test.log
                     current_target_type=$(determine_target_type $speed)
                     # сообщать об обнаружении всех целей или только тех, которые входят в зону ответственности системы ?
                     send_to_command_post "target detected" "$target_id" "$current_target_type" "$target_x" "$target_y"
-                    echo "$target_id,$speed,$current_target_type" >> $FILE_STAGE2
+                    echo "$target_id,$speed,$current_target_type,$previous_x,$previous_y,$target_x,$target_y" >> $FILE_STAGE2
                     if [[ "$TARGET" == *"$current_target_type"* ]]; then
-                        echo "$target_id,$current_target_type,$NUM_ITER" >> $FILE_STAGE3
-                        handle_shot "$target_id" "$current_target_type" "$target_x" "$target_y" "1"
+                        if [ "$(is_intersected_PRO_zone $previous_x $previous_y $target_x $target_y)" -eq 1 ]; then
+                            send_to_command_post "target moves to PRO" "$target_id" "$current_target_type" "$target_x" "$target_y"
+                        fi
                     fi
                     ;;
                 0)
@@ -188,8 +178,5 @@ while true; do
             esac
         fi
     done
-    # удаление уничтоженных целей, т.е. тех целей, выстрел по которым был совершен в пред. такте 
-    # и которые не сгенерировались в текущем такте
-    remove_killed_targets "$NUM_ITER" 
-    sleep $CLOCK
+    sleep $CLOCK_LOOP
 done
