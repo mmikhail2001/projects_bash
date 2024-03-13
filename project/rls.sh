@@ -34,7 +34,7 @@ FILE_STAGE2="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state2.log"
 DIR_TARGETS="/tmp/GenTargets/Targets"
 
 COMMAND_POST_HOST="0.0.0.0"
-COMMAND_POST_PORT="8080"
+COMMAND_POST_PORT="8081"
 
 password="sdfr374yry3c4hkcn34ycm3u4cynfecy"
 salt="mysalt"
@@ -56,6 +56,12 @@ function send_to_command_post {
     # -N чтобы при закрытии клиента сервер не закрывал сокет
     echo "$encoded" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
 }
+
+function ping_callback() {
+    send_to_command_post "pong" "" "" "" ""
+}
+
+trap 'ping_callback' SIGUSR1
 
 # определение, находится ли цель в секторе действия РЛС
 is_in_coverage_sector() {
@@ -155,6 +161,8 @@ function get_stage() {
         echo 0
     fi
 }
+
+send_to_command_post "registration:$$" "" "" "" ""
 
 NUM_ITER=0
 while true; do

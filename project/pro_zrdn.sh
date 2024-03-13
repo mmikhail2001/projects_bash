@@ -1,9 +1,7 @@
 #!/bin/bash
 
 # TODO:
-# определить поля в бд
-# helthcheck
-# предупреждение о подмене
+# комментарии
 # пароль, соль через env
 # файл с общими функциями (импорт)
 # лог для дебага - отдельный файл
@@ -53,7 +51,7 @@ DIR_DESTROY="/tmp/GenTargets/Destroy"
 # стадия 3 - цели, за которые несет ответственность данная система (для ПРО это ББ БР)  
 
 COMMAND_POST_HOST="0.0.0.0"
-COMMAND_POST_PORT="8080"
+COMMAND_POST_PORT="8081"
 
 password="sdfr374yry3c4hkcn34ycm3u4cynfecy"
 salt="mysalt"
@@ -74,6 +72,12 @@ function send_to_command_post {
     # -N чтобы при закрытии клиента сервер не закрывал сокет
     echo "$encoded" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
 }
+
+function ping_callback() {
+    send_to_command_post "pong" "" "" "" ""
+}
+
+trap 'ping_callback' SIGUSR1
 
 function calculate_distance {
     local x1=$1
@@ -159,6 +163,8 @@ function handle_shot() {
         send_to_command_post "shot is not possible on target" "$target_id" "$target_type" "$target_x" "$target_y"
     fi
 }
+
+send_to_command_post "registration:$$" "" "" "" ""
 
 NUM_ITER=0
 while true; do
