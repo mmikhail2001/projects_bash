@@ -1,10 +1,7 @@
 #!/bin/bash
 
 # TODO:
-# комментарии
-# пароль, соль через env
-# файл с общими функциями (импорт)
-# лог для дебага - отдельный файл
+# возможно, если система вышла за радиус, то залогируется target destroyed ...
 
 # детектирование обращения к необъявленным переменным
 set -u
@@ -14,9 +11,7 @@ if [ $# -ne 5 ]; then
     exit 1
 fi
 
-CLOCK_LOOP=0.8
-CLOCK_MOVE_TARGETS=1
-COUNT_TARGETS=60
+COUNT_SHOOTS=0
 
 TYPE_SYSTEM=$1
 SYSTEM_NUM=$2
@@ -25,17 +20,15 @@ RADIUS=$(( $3 * 1000 ))
 X=$(( $4 * 1000 ))
 Y=$(( $5 * 1000 ))
 
-BM=1
-PL=2
-CM=3
-
-if [ "$TYPE_SYSTEM" == "PRO" ]; then
-    TARGET=$BM
-    COUNT_SHOOTS=20
-elif [ "$TYPE_SYSTEM" == "ZRDN" ]; then
-    TARGET="$PL,$CM"
-    COUNT_SHOOTS=10
-fi
+function set_ammunition() {
+    if [ "$TYPE_SYSTEM" == "PRO" ]; then
+        TARGET=$BM
+        COUNT_SHOOTS=2
+    elif [ "$TYPE_SYSTEM" == "ZRDN" ]; then
+        TARGET="$PL,$CM"
+        COUNT_SHOOTS=1
+    fi
+}
 
 FILE_STAGE1="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state1.log"
 FILE_STAGE2="./temp/${TYPE_SYSTEM}${SYSTEM_NUM}_state2.log"
@@ -53,57 +46,23 @@ DIR_DESTROY="/tmp/GenTargets/Destroy"
 COMMAND_POST_HOST="0.0.0.0"
 COMMAND_POST_PORT="8081"
 
-password="sdfr374yry3c4hkcn34ycm3u4cynfecy"
-salt="mysalt"
-
-function send_to_command_post {
-    local message="$1"
-    local target_id="$2"
-    local target_type="$3"
-    local target_x="$4"
-    local target_y="$5"
-    local timestamp=$(date +"%Y.%m.%d %H.%M.%S")
-    local message="$timestamp,${TYPE_SYSTEM}$SYSTEM_NUM,$message,$target_type,$target_id,$target_x,$target_y"
-
-    encrypted=$(echo "$message" | openssl enc -aes-256-cbc -e -k $password -pbkdf2 | base64 -w 0)
-    
-    hash=$(echo -n "$message$salt" | sha256sum | cut -d ' ' -f 1)
-    encoded="$encrypted.$hash"
-    # -N чтобы при закрытии клиента сервер не закрывал сокет
-    echo "$encoded" | nc -N $COMMAND_POST_HOST $COMMAND_POST_PORT
-}
+source .env
+source shared.sh
 
 function ping_callback() {
     send_to_command_post "pong" "" "" "" ""
 }
 
+function new_ammunition_callback() {
+    set_ammunition
+}
+
+# обработчик "func ping_callback" для сигнала ping от командного пункта
 trap 'ping_callback' SIGUSR1
 
-function calculate_distance {
-    local x1=$1
-    local y1=$2
-    local x2=$3
-    local y2=$4
-    echo "sqrt((${x1}-${x2})^2 + (${y1}-${y2})^2)" | bc -l
-}
-
-function determine_target_type {
-    local speed=$1
-    
-    isBM=$(echo "$speed >= 8000 && $speed <= 10000" | bc)
-    isCM=$(echo "$speed >= 250 && $speed <= 1000" | bc)
-    isPL=$(echo "$speed >= 50 && $speed <= 249" | bc)
-    
-    if [ "$isBM" -eq 1 ]; then
-        echo $BM
-    elif [ "$isCM" -eq 1 ]; then
-        echo $CM
-    elif [ "$isPL" -eq 1 ]; then
-        echo $PL
-    else
-        echo "Unknown"
-    fi
-}
+# обработчик "func new_ammunition_callback", когда командный пункт поймет,
+# что боеприпасы закончились и захочет дать новые
+trap 'new_ammunition_callback' SIGUSR2
 
 function get_stage() {
     target_id="$1"
@@ -126,6 +85,7 @@ function get_stage() {
 # для целей с номером итерации ITER_TO_SAVE будет известен результат только на след такте
 # цели, для которых итерации выстрела меньше ITER_TO_SAVE, считаются уничтоженными
 function remove_killed_targets() {
+    # итерация, на которой еще не известно, уничтожена ли цель или нет (эти цели нужно сохранить в логе)
     ITER_TO_SAVE=$1
     touch $FILE_STAGE3_TEMP
     while IFS= read -r line; do
@@ -151,19 +111,21 @@ function handle_shot() {
     local target_y="$4"
     local stage="$5"
 
+    if [ "$stage" == "3" ]; then
+        # на стадии 3 цели, в которые уже хотя бы раз стреляли
+        send_to_command_post "missed target" "$target_id" "$target_type" "$target_x" "$target_y"
+    fi
+
     if [ $COUNT_SHOOTS -gt 0 ]; then
         ((COUNT_SHOOTS--))
         echo "$target_id" > "$DIR_DESTROY/$target_id"
-        if [ "$stage" == "3" ]; then
-            # на стадии 3 цели, в которые уже хотя бы раз стреляли
-            send_to_command_post "missed target" "$target_id" "$target_type" "$target_x" "$target_y"
-        fi
         send_to_command_post "shot at target" "$target_id" "$target_type" "$target_x" "$target_y"
     else 
         send_to_command_post "shot is not possible on target" "$target_id" "$target_type" "$target_x" "$target_y"
     fi
 }
 
+set_ammunition
 send_to_command_post "registration:$$" "" "" "" ""
 
 NUM_ITER=0

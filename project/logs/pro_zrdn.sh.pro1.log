@@ -1,0 +1,89 @@
+sort: cannot read: ./temp/PRO1_state3.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state1.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+grep: ./temp/PRO1_state2.log: No such file or directory
+---new_ammunition_callback
+new 0
+old 2
+---new_ammunition_callback
+new 0
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 0
+old 2
+---new_ammunition_callback
+new 0
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 0
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2
+---new_ammunition_callback
+new 2
+old 2

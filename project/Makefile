@@ -34,14 +34,14 @@ run: clear
 	
 	sleep 1
 	
-	./$(PRO_ZRDN_FILE) $(PRO1_PARAMS) > temp/$(PRO_ZRDN_FILE).pro1.log 2>&1 &
-	./$(PRO_ZRDN_FILE) $(ZRDN1_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn1.log 2>&1 &
-	./$(PRO_ZRDN_FILE) $(ZRDN2_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn2.log 2>&1 &
-	./$(PRO_ZRDN_FILE) $(ZRDN3_PARAMS) > temp/$(PRO_ZRDN_FILE).zrdn3.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(PRO1_PARAMS) > logs/$(PRO_ZRDN_FILE).pro1.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(ZRDN1_PARAMS) > logs/$(PRO_ZRDN_FILE).zrdn1.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(ZRDN2_PARAMS) > logs/$(PRO_ZRDN_FILE).zrdn2.log 2>&1 &
+	./$(PRO_ZRDN_FILE) $(ZRDN3_PARAMS) > logs/$(PRO_ZRDN_FILE).zrdn3.log 2>&1 &
 	
-	./$(RLS_FILE) $(RLS1_PARAMS) > temp/$(RLS_FILE).rls1.log 2>&1 &
-	./$(RLS_FILE) $(RLS2_PARAMS) > temp/$(RLS_FILE).rls2.log 2>&1 &
-	./$(RLS_FILE) $(RLS3_PARAMS) > temp/$(RLS_FILE).rls3.log 2>&1 &
+	./$(RLS_FILE) $(RLS1_PARAMS) > logs/$(RLS_FILE).rls1.log 2>&1 &
+	./$(RLS_FILE) $(RLS2_PARAMS) > logs/$(RLS_FILE).rls2.log 2>&1 &
+	./$(RLS_FILE) $(RLS3_PARAMS) > logs/$(RLS_FILE).rls3.log 2>&1 &
 
 	
 stop:
@@ -53,7 +53,12 @@ stop:
 	$(call stop_process,$(RLS_FILE) $(RLS2_PARAMS))
 	$(call stop_process,$(RLS_FILE) $(RLS3_PARAMS))
 	$(call stop_process,$(GEN_FILE))
+	
 	$(call stop_process,$(COMMAND_POST_FILE))
+	
+	# завершение асинхронного процесса (sleep 20 прикрепляется к init, после 20 сек. вернет код возврата)
+	$(call stop_process,$(COMMAND_POST_FILE))
+	
 	$(call stop_process,ncat -l --keep-open)
 
 watch_db:
