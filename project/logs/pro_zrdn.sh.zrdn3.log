@@ -1,23 +1,15 @@
 sort: cannot read: ./temp/ZRDN3_state3.log: No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/844acb0b245c8244a7': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/4c1e05dd045de5c58e': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/cef15d7753178244a7': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/5fc1418115fecb3061': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/0106c5adb005c4a6f1': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/2e51a4b2c0de1c1d37': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/c537bef0d028d286f4': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/a8db90069249988a7f': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/ab02188b2c4c412229': No such file or directory
+ls: cannot access '/tmp/GenTargets/Targets/42f8507d6c65799e9a': No such file or directory
 grep: ./temp/ZRDN3_state2.log: No such file or directory
 grep: ./temp/ZRDN3_state1.log: No such file or directory
 grep: ./temp/ZRDN3_state2.log: No such file or directory
 grep: ./temp/ZRDN3_state2.log: No such file or directory
----new_ammunition_callback
-new 0
-old 1
----new_ammunition_callback
-new 0
-old 1
----new_ammunition_callback
-new 0
-old 1
----new_ammunition_callback
-new 1
-old 1
-ls: cannot access '/tmp/GenTargets/Targets/87e36dd66352dc3eee': No such file or directory
-ls: cannot access '/tmp/GenTargets/Targets/7cf444e028c27c6566': No such file or directory
-ls: cannot access '/tmp/GenTargets/Targets/6fb9ad12a3762c5d92': No such file or directory
-ls: cannot access '/tmp/GenTargets/Targets/5df0f73e8db3bbbb27': No such file or directory
-ls: cannot access '/tmp/GenTargets/Targets/fbbc415c3b188a05d3': No such file or directory
-ls: cannot access '/tmp/GenTargets/Targets/5e3e5631ed812f6143': No such file or directory

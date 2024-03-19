@@ -11,6 +11,9 @@ if [ $# -ne 5 ]; then
     exit 1
 fi
 
+source .env
+source shared.sh
+
 COUNT_SHOOTS=0
 
 TYPE_SYSTEM=$1
@@ -23,10 +26,10 @@ Y=$(( $5 * 1000 ))
 function set_ammunition() {
     if [ "$TYPE_SYSTEM" == "PRO" ]; then
         TARGET=$BM
-        COUNT_SHOOTS=2
+        COUNT_SHOOTS=20
     elif [ "$TYPE_SYSTEM" == "ZRDN" ]; then
         TARGET="$PL,$CM"
-        COUNT_SHOOTS=1
+        COUNT_SHOOTS=10
     fi
 }
 
@@ -45,9 +48,6 @@ DIR_DESTROY="/tmp/GenTargets/Destroy"
 
 COMMAND_POST_HOST="0.0.0.0"
 COMMAND_POST_PORT="8081"
-
-source .env
-source shared.sh
 
 function ping_callback() {
     send_to_command_post "pong" "" "" "" ""

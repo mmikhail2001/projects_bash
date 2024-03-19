@@ -1,1 +1,7 @@
-./rls.sh: line 22: BM: unbound variable
+grep: ./temp/RLS3_state2.log: No such file or directory
+grep: ./temp/RLS3_state1.log: No such file or directory
+grep: ./temp/RLS3_state2.log: No such file or directory
+grep: ./temp/RLS3_state2.log: No such file or directory
+grep: ./temp/RLS3_state2.log: No such file or directory
+grep: ./temp/RLS3_state2.log: No such file or directory
+./rls.sh: line 125: [: : integer expression expected

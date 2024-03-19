@@ -5,7 +5,6 @@ set -u
 DB_FILE="./db/messages.db"
 LISTEN_PORT=8081
 PING_PONG_TIME_INTERVAL=20
-NEW_AMMUNITION_TIME_INTERVAL=10
 
 source .env
 
@@ -17,7 +16,7 @@ SYSTEM_PIDS_FILE="./temp/system_pids_file"
 
 touch "$SYSTEM_PIDS_FILE"
 
-handle_pong_or_registration_message() {
+handle_special_messages() {
     local system="$1"
     local message="$2"
     local text_message=$(echo "$message" | cut -d ':' -f 1) 
@@ -48,7 +47,7 @@ handle_pong_or_registration_message() {
             ;;
         "shot is not possible on target")
             local pid=$(grep "$system" "$SYSTEM_PIDS_FILE" | cut -d',' -f1)
-            sleep $NEW_AMMUNITION_TIME_INTERVAL && kill -SIGUSR2 "$pid" &
+            kill -SIGUSR2 "$pid" &
             echo 1
             ;;
         *)
@@ -87,7 +86,7 @@ while true; do
         if [ "$hash" == "$calculated_hash" ]; then
             IFS=',' read -r timestamp system message target_type target_id target_x target_y <<< "$decrypted"
             # сообщения типа pong или registration_message обрабатываем отдельно 
-            if [ "$(handle_pong_or_registration_message "$system" "$message")" -ne 0 ]; then
+            if [ "$(handle_special_messages "$system" "$message")" -ne 0 ]; then
                 sqlite3 "$DB_FILE" "INSERT INTO messages VALUES ('$timestamp', '$system', '$message', '$target_type', '$target_id', '$target_x', '$target_y');"
                 if [ $? -ne 0 ]; then
                     echo "Error inserting message into database."

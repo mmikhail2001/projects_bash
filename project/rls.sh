@@ -7,6 +7,9 @@ if [ $# -ne 9 ]; then
     exit 1
 fi
 
+source .env
+source shared.sh
+
 TYPE_SYSTEM="RLS"
 SYSTEM_NUM=$1
 # перевод в метры
@@ -27,9 +30,6 @@ DIR_TARGETS="/tmp/GenTargets/Targets"
 
 COMMAND_POST_HOST="0.0.0.0"
 COMMAND_POST_PORT="8081"
-
-source .env
-source shared.sh
 
 function ping_callback() {
     send_to_command_post "pong" "" "" "" ""
@@ -84,8 +84,6 @@ function is_intersected_PRO_zone() {
 
     # расстояние от точки пересечения (x3, y3) до центра окружности (center_x, center_y)
     local distance=$(bc -l <<< "scale=10; sqrt(($x3 - $center_x)^2 + ($y3 - $center_y)^2)")
-
-    echo "distance[$distance], radius[$radius]" >> test.test.log
 
     if (( $(bc <<< "$distance <= $radius") )); then
         echo 1

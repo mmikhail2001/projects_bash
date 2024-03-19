@@ -1,1 +1,14 @@
-./rls.sh: line 22: BM: unbound variable
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state1.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
+grep: ./temp/RLS2_state2.log: No such file or directory
