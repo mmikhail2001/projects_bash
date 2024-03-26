@@ -95,5 +95,5 @@ while true; do
         else
             sqlite3 "$DB_FILE" "INSERT INTO messages VALUES ('`date +"%Y.%m.%d %H.%M.%S"`', '', 'message hash sum is incorrect', '', '', '', '');"
         fi
-    done < <(ncat -l --keep-open "$LISTEN_PORT")
+    done < <(nс -lk "$LISTEN_PORT")
 done
