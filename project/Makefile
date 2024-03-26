@@ -59,7 +59,7 @@ stop:
 	# завершение асинхронного процесса (sleep 20 прикрепляется к init, после 20 сек. вернет код возврата)
 	$(call stop_process,$(COMMAND_POST_FILE))
 	
-	$(call stop_process,ncat -l --keep-open)
+	$(call stop_process,nc -lk)
 
 watch_db:
 	watch -n1 "sqlite3 ./db/messages.db \"SELECT * FROM messages;\" | column -t -s '|' | tail -n 30"
